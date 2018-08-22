@@ -113,7 +113,6 @@ proc mouse_parser*(mstring: var string, c: var char): KMEvent {.inline.}=
     # CALL TARGETOBJ.onClick(mEvent) ---------------
 
 #-----------------------------------
-# todo: maybe a enum to interpret?
 proc esc_parser(str:string): KMEvent {.inline.}=
     #echo "esc: ", str
     result = new KMEvent
@@ -151,11 +150,11 @@ proc char_parser(str:string): KMEvent {.inline.}=
 #              ╚═╝     ╚═╝╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝
 #
 
-proc kmLoop*(): KMEvent  =
+proc kmLoop*(kmeh: proc(e:KMEvent)): KMEvent  =
     var c: char
     var str: string = ""
     block tobreak:
-        #while true:
+        while true:
             str = ""
             c = getch()
             if c == '\e':
@@ -166,7 +165,8 @@ proc kmLoop*(): KMEvent  =
                     #break tobreak
                     result=new KMEvent
                     result.evType = "EXIT"
-                    return result
+                    #kmeh(result)
+                    kmeh(result)
                 c = getch()  # CSI begins here
 
                 if c == '<': # mouse event
@@ -177,7 +177,7 @@ proc kmLoop*(): KMEvent  =
                         if  c != 'M' and c != 'm'  : str = str & c
                     result = mouse_parser(str, c)
                     #mouse_cb(app, mEv )
-                    return result
+                    kmeh(result)
 
                 
                 else: # function key
@@ -188,7 +188,7 @@ proc kmLoop*(): KMEvent  =
                     #echo str
                     result =  esc_parser(str)
                     #esc_cb(app, esc_parser(str) )
-                    return result
+                    kmeh(result)
                     #str = ""
             else :
                 str = str & c
@@ -206,7 +206,7 @@ proc kmLoop*(): KMEvent  =
                 #echo str
                 #char_cb( app, char_parser(str) )
                 result = char_parser(str)
-                return result
+                kmeh(result)
 
 
 #                ████████╗███████╗███████╗████████╗

@@ -440,9 +440,9 @@ Lorem ipsum dolor sit ameth.
 
 
 
-include "mainloop.inc.nim"
+#include "mainloop.inc.nim"
 
-#[ 
+
 ################################################################################
 ################################################################################
 ################################################################################
@@ -509,42 +509,48 @@ rT.action = checkTerminalResized
 app.timers.add(rT)
 
 #..........................................
-var kmloopFlowVar = spawn kmLoop() #KMEvent
+
+proc kmEventHandler(kmEvent: KMEvent)=
+    block LOOP:
+        case kmEvent.evType:
+            of "Click","Release","Drag","Drop", "ScrollUp","ScrollDown":
+                app.mouseEventHandler(kmEvent)
+
+
+            of "FnKey","CtrlKey", "Char": # vscode terminal middle mouse click triggers this too...
+                if app.onKeypress != nil and app.onKeypress(app, kmEvent) == false: #! changed
+
+                    if app.activeControll != nil and app.activeControll.onKeypress != nil:
+                        app.activeControll.onKeypress(app.activeControll, kmEvent)
+
+            of "EXIT":
+                if app.activeControll != nil:
+                    try:
+                        if app.activeControll.cancel != nil:
+                            app.activeControll.cancel(app.activeControll)
+                        app.activeControll = nil
+                    except:
+                        break LOOP
+                else:
+                    break LOOP
+            else: discard
+
+
+#..........................................
+var kmloopFlowVar = spawn kmLoop(kmEventHandler) #KMEvent
 var kmEvent: KMEvent
 block LOOP:
     while true:
+        sleep(1)
 
-        app.runTimers()
+#[         app.runTimers()
         #......
 
         if kmloopFlowVar.isReady(): #! it consumes LOT of cpu
 
             kmEvent = KMEvent(^kmloopFlowVar) # it stops here anyway...
 
-            case kmEvent.evType:
-                of "Click","Release","Drag","Drop", "ScrollUp","ScrollDown":
-                    app.mouseEventHandler(kmEvent)
-
-
-                of "FnKey","CtrlKey", "Char": # vscode terminal middle mouse click triggers this too...
-                    if app.onKeypress != nil and app.onKeypress(app, kmEvent) == false: #! changed
-
-                        if app.activeControll != nil and app.activeControll.onKeypress != nil:
-                            app.activeControll.onKeypress(app.activeControll, kmEvent)
-
-                of "EXIT":
-                    if app.activeControll != nil:
-                        try:
-                            if app.activeControll.cancel != nil:
-                                app.activeControll.cancel(app.activeControll)
-                            app.activeControll = nil
-                        except:
-                            break LOOP
-                    else:
-                        break LOOP
-                else: discard
-
-            kmloopFlowVar = spawn kmLoop() #KMEvent
+            kmloopFlowVar = spawn kmLoop() #KMEvent ]#
 
 
 app.closeTerminal()
@@ -553,4 +559,4 @@ app.closeTerminal()
 ################################################################################
 ################################################################################
 ################################################################################
-################################################################################ ]#
+################################################################################

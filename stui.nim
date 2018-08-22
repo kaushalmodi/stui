@@ -133,9 +133,9 @@ type
         #???
 
 #............................
-    Event* = ref object of RootObj
+    Event* = object of RootObj
 
-    KMEvent* = ref object of Event
+    KME* = object of Event
         btn*, x*, y* :int
         c*:char
         source*, target*:  Controll
@@ -143,6 +143,9 @@ type
 
         key*: string
         ctrlKey*: int
+
+    KMEvent* = ref object of KME
+
 
 
 
