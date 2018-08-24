@@ -29,16 +29,15 @@ release(app.termlock)
 app.draw()
 
 
-#...........................................        
+#-------------------------------------------------------------------------------        
 import times
 
-proc checkTerminalResized()=
-    if app.terminalHeight != terminalHeight() or app.terminalWidth != terminalWidth():
-        app.terminalHeight = terminalHeight()
-        app.terminalWidth  = terminalWidth()
-        app.recalc()
-        app.draw()
-        # todo: trigger on resize app.listeners -> "resize"
+proc checkTerminalResized(app:ptr App)=
+    if app[].terminalHeight != terminalHeight() or app[].terminalWidth != terminalWidth():
+        app[].terminalHeight = terminalHeight()
+        app[].terminalWidth  = terminalWidth()
+        #[ app[].recalc()
+        app[].draw() ]#
 
 
 #.............
@@ -64,16 +63,24 @@ rT.action = checkTerminalResized
 #app.timers.add(tA)
 app.timers.add(rT)
 
-#..........................................
+proc th_runTimers(app:ptr App):int=
+    while true:
+        app[].runTimers()
+        sleep(100)
+
+discard spawn th_runTimers(app.address)
+
+
+#-------------------------------------------------------------------------------
 var kmloopFlowVar = spawn kmLoop() #KMEvent
 var kmEvent: KMEvent
 block LOOP:
     while true:
 
-        app.runTimers()
+        #app.runTimers()
         #......
 
-        if kmloopFlowVar.isReady(): #! it consumes LOT of cpu | req by: app.runTimers()
+        #if kmloopFlowVar.isReady(): #! it consumes LOT of cpu | req by: app.runTimers()
 
             kmEvent = KMEvent(^kmloopFlowVar) # it stops here anyway...
 
@@ -109,6 +116,8 @@ block LOOP:
                 else: discard
 
             kmloopFlowVar = spawn kmLoop() #KMEvent
+
+        #sleep(0)
 
 
 app.closeTerminal()

@@ -15,6 +15,10 @@
 ]#
 
 #[
+    Requires: Deja-Vu or other Font with good range of unicode character support
+]#
+
+#[
     TODO:
         main loop poll consumes cpu
         
@@ -133,9 +137,9 @@ type
         #???
 
 #............................
-    Event* = object of RootObj
+    Event* = ref object of RootObj
 
-    KME* = object of Event
+    KMEvent* = ref object of Event
         btn*, x*, y* :int
         c*:char
         source*, target*:  Controll
@@ -143,9 +147,6 @@ type
 
         key*: string
         ctrlKey*: int
-
-    KMEvent* = ref object of KME
-
 
 
 
@@ -220,8 +221,9 @@ type
         #name*:string
 
 
-    TimedAction* = tuple[name:string,interval:float,action:proc():void,lastrun:float] # epochTime:float
+    TimedAction* = tuple[name:string,interval:float,action:proc(app:ptr App):void,lastrun:float] # epochTime:float
     App* = ref object of RootObj
+        address*: ptr App
         colorMode*:int
         terminalWidth*:int
         terminalHeight*:int
@@ -841,6 +843,8 @@ proc appOnKeypress*(app:App, event: KMEvent):bool
 
 proc newApp*(): App =
     result = new App
+
+    result.address = addr result
 
     initLock(result.termlock)
 
@@ -1467,12 +1471,14 @@ proc runTimers*(this:App)=
     if this.timers.len > 0:
         for iT in 0..this.timers.high:
             if time - this.timers[iT].lastrun >= this.timers[iT].interval:
-                this.timers[iT].action()
+                this.timers[iT].action(this.address)
                 this.timers[iT].lastrun = time
 
 #-------------------------------------------------------------------------------
 #[
-    activate is written before check for prevStyle != nil was inserted into blur()
+    # activate is written before check for prevStyle != nil was inserted into blur()
+
+    activate is useful to pass focus to other controll like selectbox->chooser
 ]#
 proc activate*(app: App, controll:Controll)=
     if app.activeControll != nil:
@@ -1494,6 +1500,8 @@ proc `activePage`*(this:App): Page {.inline.} =
 
 
 proc parkCursor*(app:App){.inline.}=
+    ## move cursor to "parking" position
+    ## proc blur() uses it mostly
     withLock app.termlock:
         terminal.setCursorPos(app.activeWindow.x1 + 1, app.activeWindow.y1 + 2)
         app.cursorPos.x = app.activeWindow.x1 + 1
@@ -1507,7 +1515,7 @@ proc parkCursor*(app:App){.inline.}=
 
 
 proc getUIElementAtPos*(app:App, x,y:int, setActive: bool = false): Controll =
-    #echo x, y
+    ## gets Controll at mouse pos, make it activ if asked
     result = nil
     
     # todo: WIDGETS!!!!!
